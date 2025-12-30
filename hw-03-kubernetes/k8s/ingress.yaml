@@ -1,0 +1,53 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: helloworld-ingress
+  labels:
+    app: helloworld
+  annotations:
+    # ═══════════════════════════════════════════════════════════════════
+    # Annotations для nginx-ingress controller
+    # ═══════════════════════════════════════════════════════════════════
+    # Полный список: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/
+    
+    # Таймауты
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+
+spec:
+  # ═══════════════════════════════════════════════════════════════════
+  # Ingress Class - какой контроллер обрабатывает этот Ingress
+  # ═══════════════════════════════════════════════════════════════════
+  # ВАЖНО: Это обязательно для nginx-ingress, установленного через Helm!
+  # Без этого Ingress будет проигнорирован.
+  ingressClassName: nginx
+  
+  # ═══════════════════════════════════════════════════════════════════
+  # Rules - правила маршрутизации
+  # ═══════════════════════════════════════════════════════════════════
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          # ─────────────────────────────────────────────────────────────
+          # Правило для /health
+          # ─────────────────────────────────────────────────────────────
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: helloworld-svc
+                port:
+                  number: 80
+          
+          # ─────────────────────────────────────────────────────────────
+          # Правило для корня (опционально, для удобства)
+          # ─────────────────────────────────────────────────────────────
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: helloworld-svc
+                port:
+                  number: 80
