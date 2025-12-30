@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: usercrud
+  labels:
+    app: usercrud
+spec:
+  replicas: 2
+  
+  selector:
+    matchLabels:
+      app: usercrud
+  
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  
+  template:
+    metadata:
+      labels:
+        app: usercrud
+    spec:
+      # Ждём пока PostgreSQL будет готов
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL..."
+              until nc -z postgres-postgresql 5432; do
+                echo "PostgreSQL is unavailable - sleeping"
+                sleep 2
+              done
+              echo "PostgreSQL is up!"
+      
+      containers:
+        - name: usercrud
+          image: tobantal/otus-hw04:v1
+          
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          
+          # Переменные окружения из ConfigMap и Secret
+          envFrom:
+            - configMapRef:
+                name: usercrud-config
+            - secretRef:
+                name: usercrud-secret
+          
+          # Liveness probe
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          
+          # Readiness probe
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 2
+          
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
