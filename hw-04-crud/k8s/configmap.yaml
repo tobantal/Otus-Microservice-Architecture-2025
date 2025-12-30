@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: usercrud-config
+  labels:
+    app: usercrud
+data:
+  # Конфигурация PostgreSQL (не секретные данные)
+  DB_HOST: "postgres-postgresql"
+  DB_PORT: "5432"
+  DB_NAME: "users_db"

@@ -1,0 +1,32 @@
+# values-postgres.yaml
+# Настройки для Bitnami PostgreSQL Helm chart
+# https://github.com/bitnami/charts/tree/main/bitnami/postgresql
+
+# Аутентификация
+auth:
+  # Пароль для пользователя postgres
+  postgresPassword: "postgres"
+  # Можно создать отдельного пользователя
+  # username: "appuser"
+  # password: "apppassword"
+  # Имя базы данных
+  database: "users_db"
+
+# Ресурсы (для minikube достаточно минимальных)
+primary:
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  
+  # Persistence (для minikube можно отключить)
+  persistence:
+    enabled: true
+    size: 1Gi
+
+# Метрики (опционально)
+metrics:
+  enabled: false

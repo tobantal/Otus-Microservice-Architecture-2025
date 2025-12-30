@@ -5,24 +5,6 @@ project(helloworld
     LANGUAGES CXX
 )
 
-include(FetchContent)
-
-# ============================================================================
-# Dependencies
-# ============================================================================
-
-FetchContent_Declare(
-    cpp_http_server
-    GIT_REPOSITORY https://github.com/tobantal/cpp-http-server.git
-    GIT_TAG v0.0.5
-)
-
-FetchContent_MakeAvailable(
-    cpp_http_server
-)
-
-find_package(Threads REQUIRED)
-
 # ============================================================================
 # Application
 # ============================================================================

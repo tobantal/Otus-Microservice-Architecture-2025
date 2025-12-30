@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.15)
 project(otus-microservices VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -9,6 +9,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+
+# ============================================
+# ЗАВИСИМОСТИ: FetchContent
+# ============================================
 include(FetchContent)
 
 # cpp-http-server (включает Boost.Beast, Boost.DI, nlohmann/json)
@@ -18,6 +22,49 @@ FetchContent_Declare(
     GIT_TAG        v0.0.5
 )
 
+# cpp-cache (LRU cache)
+FetchContent_Declare(
+    cpp-cache
+    GIT_REPOSITORY https://github.com/tobantal/cpp-cache.git
+    GIT_TAG        v1.0.4
+)
+
+FetchContent_MakeAvailable(cpp-http-server cpp-cache)
+
+# Найти OpenSSL (ДО FetchContent amqpcpp)
+find_package(OpenSSL REQUIRED)
+
+# AMQP-CPP для RabbitMQ
+FetchContent_Declare(
+    amqpcpp
+    GIT_REPOSITORY https://github.com/CopernicaMarketingSoftware/AMQP-CPP.git
+    GIT_TAG v4.3.26
+)
+# КРИТИЧНО: включить TCP поддержку
+set(AMQP-CPP_BUILD_SHARED OFF CACHE BOOL "" FORCE)
+set(AMQP-CPP_LINUX_TCP ON CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(amqpcpp)
+
+# Сначала получаем libpq (PostgreSQL C library)
+find_package(PostgreSQL REQUIRED)
+
+# Получаем libpqxx
+FetchContent_Declare(
+    libpqxx
+    GIT_REPOSITORY https://github.com/jtv/libpqxx.git
+    GIT_TAG 7.9.2
+)
+
+# Опции для libpqxx (отключаем ненужное)
+set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
+set(BUILD_DOC OFF CACHE BOOL "" FORCE)
+set(BUILD_TEST OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(libpqxx)
+
+# System dependencies
+find_package(Threads REQUIRED)
 
 message(STATUS "")
 message(STATUS "========================================")
@@ -34,6 +81,8 @@ message(STATUS "")
 
 # Homework projects
 add_subdirectory(hw-02-docker)
+
+add_subdirectory(hw-04-crud)
 
 message(STATUS "")
 message(STATUS "Configuration completed successfully")

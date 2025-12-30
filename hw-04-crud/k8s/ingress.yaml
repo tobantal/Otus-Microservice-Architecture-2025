@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: usercrud-ingress
+  labels:
+    app: usercrud
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
+
+spec:
+  ingressClassName: nginx
+  
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          # Health check
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: usercrud-svc
+                port:
+                  number: 80
+          
+          # Users API
+          - path: /api/v1/users
+            pathType: Prefix
+            backend:
+              service:
+                name: usercrud-svc
+                port:
+                  number: 80

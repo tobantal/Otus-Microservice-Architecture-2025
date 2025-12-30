@@ -1,0 +1,85 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: usercrud-migration
+  labels:
+    app: usercrud
+    component: migration
+spec:
+  # Не перезапускать при ошибке (исправляем вручную)
+  backoffLimit: 3
+  
+  template:
+    metadata:
+      labels:
+        app: usercrud
+        component: migration
+    spec:
+      restartPolicy: Never
+      
+      # Ждём пока PostgreSQL будет готов
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL..."
+              until nc -z postgres-postgresql 5432; do
+                echo "PostgreSQL is unavailable - sleeping"
+                sleep 2
+              done
+              echo "PostgreSQL is up!"
+      
+      containers:
+        - name: migration
+          image: postgres:15-alpine
+          
+          command:
+            - sh
+            - -c
+            - |
+              echo "Running migrations..."
+              PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME -f /sql/init.sql
+              echo "Migrations completed!"
+          
+          envFrom:
+            - configMapRef:
+                name: usercrud-config
+            - secretRef:
+                name: usercrud-secret
+          
+          volumeMounts:
+            - name: sql-scripts
+              mountPath: /sql
+      
+      volumes:
+        - name: sql-scripts
+          configMap:
+            name: usercrud-sql
+---
+# ConfigMap с SQL скриптами
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: usercrud-sql
+  labels:
+    app: usercrud
+data:
+  init.sql: |
+    -- Создание таблицы пользователей
+    CREATE TABLE IF NOT EXISTS users (
+        id          BIGSERIAL PRIMARY KEY,
+        username    VARCHAR(255) NOT NULL UNIQUE,
+        first_name  VARCHAR(255),
+        last_name   VARCHAR(255),
+        email       VARCHAR(255) NOT NULL,
+        phone       VARCHAR(50),
+        created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+
+    -- Индексы
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
