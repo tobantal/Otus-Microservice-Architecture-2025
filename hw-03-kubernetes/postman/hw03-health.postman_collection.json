@@ -1,0 +1,85 @@
+{
+	"info": {
+		"_postman_id": "hw03-health-collection",
+		"name": "HW03 - Kubernetes Health Check",
+		"description": "Тесты для ДЗ-03: Основы работы с Kubernetes\n\nПроверяет доступность сервиса через Ingress на arch.homework",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://arch.homework",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Content-Type is application/json\", function () {",
+							"    pm.response.to.have.header(\"Content-Type\");",
+							"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+							"});",
+							"",
+							"pm.test(\"Response has status field\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"status\");",
+							"});",
+							"",
+							"pm.test(\"Status is OK or ok\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    var status = jsonData.status.toLowerCase();",
+							"    pm.expect(status).to.eql(\"ok\");",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 500ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(500);",
+							"});",
+							"",
+							"console.log(\"Response body: \" + pm.response.text());",
+							"console.log(\"Response time: \" + pm.response.responseTime + \"ms\");"
+						],
+						"type": "text/javascript"
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"console.log(\"Testing endpoint: \" + pm.variables.get(\"baseUrl\") + \"/health\");"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/health",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Проверка здоровья сервиса.\n\nОжидаемый ответ:\n```json\n{\"status\": \"OK\"}\n```"
+			},
+			"response": []
+		}
+	]
+}

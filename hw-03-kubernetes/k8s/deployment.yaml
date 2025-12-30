@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helloworld
+  labels:
+    app: helloworld
+spec:
+  # Минимум 2 реплики по требованию ДЗ
+  replicas: 2
+  
+  selector:
+    matchLabels:
+      app: helloworld
+  
+  # Стратегия обновления: Rolling Update
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Максимум +1 под во время обновления
+      maxUnavailable: 0  # Всегда минимум 2 пода доступны
+  
+  template:
+    metadata:
+      labels:
+        app: helloworld
+    spec:
+      containers:
+        - name: helloworld
+          image: tobantal/otus-hw02:v1
+          
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          
+          # ═══════════════════════════════════════════════════════════
+          # LIVENESS PROBE - "Жив ли контейнер?"
+          # ═══════════════════════════════════════════════════════════
+          # Если проверка падает 3 раза подряд → K8s перезапускает контейнер
+          # Используется для обнаружения deadlock, бесконечных циклов и т.д.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5   # Ждать 5 сек после старта
+            periodSeconds: 10        # Проверять каждые 10 сек
+            timeoutSeconds: 3        # Таймаут ответа
+            failureThreshold: 3      # 3 неудачи = перезапуск
+          
+          # ═══════════════════════════════════════════════════════════
+          # READINESS PROBE - "Готов ли принимать трафик?"
+          # ═══════════════════════════════════════════════════════════
+          # Если проверка падает → под убирается из Service endpoints
+          # Трафик перестаёт приходить, но контейнер НЕ перезапускается
+          # Используется для graceful startup и временной недоступности
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 3   # Ждать 3 сек (быстрее чем liveness)
+            periodSeconds: 5         # Проверять чаще
+            timeoutSeconds: 2
+            failureThreshold: 2      # 2 неудачи = убрать из балансировки
+            successThreshold: 1      # 1 успех = вернуть в балансировку
+          
+          # Ресурсные лимиты (опционально, но хорошая практика)
+          resources:
+            requests:
+              cpu: "50m"       # 0.05 CPU core
+              memory: "64Mi"   # 64 MB RAM
+            limits:
+              cpu: "200m"      # Максимум 0.2 CPU core
+              memory: "128Mi"  # Максимум 128 MB RAM
