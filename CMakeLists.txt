@@ -84,6 +84,8 @@ add_subdirectory(hw-02-docker)
 
 add_subdirectory(hw-04-crud)
 
+add_subdirectory(hw-05-monitoring)
+
 message(STATUS "")
 message(STATUS "Configuration completed successfully")
 message(STATUS "")

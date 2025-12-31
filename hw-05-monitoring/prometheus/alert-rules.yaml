@@ -1,0 +1,73 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: hw05-alerts
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: hw05-monitoring
+      rules:
+        - alert: HighErrorRate
+          expr: sum(rate(http_errors_total[5m])) by (path) / sum(rate(http_requests_total[5m])) by (path) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate on {{ $labels.path }}"
+            description: "Error rate is {{ $value | humanizePercentage }}"
+
+        - alert: CriticalErrorRate
+          expr: sum(rate(http_errors_total[5m])) by (path) / sum(rate(http_requests_total[5m])) by (path) > 0.10
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Critical error rate on {{ $labels.path }}"
+            description: "Error rate is {{ $value | humanizePercentage }}"
+
+        - alert: HighLatencyP95
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)) > 0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High P95 latency on {{ $labels.path }}"
+            description: "P95 latency is {{ $value | humanizeDuration }}"
+
+        - alert: CriticalLatencyP99
+          expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, path)) > 1.0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Critical P99 latency on {{ $labels.path }}"
+            description: "P99 latency is {{ $value | humanizeDuration }}"
+
+        - alert: ServiceDown
+          expr: up{job="hw05-monitoring"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "HW05 Service is down"
+            description: "Service has been down for more than 1 minute"
+
+    - name: nginx-ingress
+      rules:
+        - alert: NginxHighErrorRate
+          expr: sum(rate(nginx_ingress_controller_requests{status=~"5.."}[5m])) by (ingress) / sum(rate(nginx_ingress_controller_requests[5m])) by (ingress) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High error rate on nginx ingress {{ $labels.ingress }}"
+
+        - alert: NginxHighLatency
+          expr: histogram_quantile(0.95, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket[5m])) by (le, ingress)) > 0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High nginx latency on {{ $labels.ingress }}"
