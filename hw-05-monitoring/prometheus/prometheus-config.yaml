@@ -1,0 +1,54 @@
+# Prometheus конфигурация для hw05
+# Используется если деплоим standalone Prometheus
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: hw05
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    rule_files:
+      - /etc/prometheus/rules/*.yaml
+
+    alerting:
+      alertmanagers:
+        - static_configs:
+            - targets: []
+
+    scrape_configs:
+      # HW05 Application
+      - job_name: 'hw05-monitoring'
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - hw05
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_label_app]
+            regex: hw05-monitoring
+            action: keep
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            regex: http
+            action: keep
+
+      # Nginx Ingress Controller
+      - job_name: 'nginx-ingress'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - ingress-nginx
+                - m  # namespace где установлен ingress
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            regex: metrics
+            action: keep
+
+      # Prometheus self-monitoring
+      - job_name: 'prometheus'
+        static_configs:
+          - targets: ['localhost:9090']

@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hw05-ingress
+  namespace: hw05
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: arch.homework
+      http:
+        paths:
+          # /otusapp/tobolkin/* -> /*
+          - path: /otusapp/tobolkin(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: hw05-monitoring
+                port:
+                  number: 8000

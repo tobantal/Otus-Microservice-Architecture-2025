@@ -1,0 +1,22 @@
+# ServiceMonitor для Prometheus Operator (kube-prometheus-stack)
+# Если используется простой Prometheus - использовать annotations в service.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hw05-monitoring
+  namespace: hw05
+  labels:
+    app: hw05-monitoring
+    release: prometheus  # Важно для kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: hw05-monitoring
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - hw05

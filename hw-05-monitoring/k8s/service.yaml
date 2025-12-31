@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hw05-monitoring
+  namespace: hw05
+  labels:
+    app: hw05-monitoring
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    app: hw05-monitoring
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+  type: ClusterIP
