@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hw06-postgres-init
+  namespace: hw06
+data:
+  init.sql: |
+    -- HW06: Authentication Service Database Schema
+    
+    CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(36) PRIMARY KEY,
+        username VARCHAR(50) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE TABLE IF NOT EXISTS profiles (
+        user_id VARCHAR(36) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        first_name VARCHAR(100),
+        last_name VARCHAR(100),
+        email VARCHAR(255),
+        phone VARCHAR(50),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+    CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hw06-postgres-pvc
+  namespace: hw06
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hw06-postgres
+  namespace: hw06
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hw06-postgres
+  template:
+    metadata:
+      labels:
+        app: hw06-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "auth"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: hw06-auth-secret
+                  key: DB_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hw06-auth-secret
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-sql
+              mountPath: /docker-entrypoint-initdb.d
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "auth", "-d", "auth"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: hw06-postgres-pvc
+        - name: init-sql
+          configMap:
+            name: hw06-postgres-init
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hw06-postgres
+  namespace: hw06
+spec:
+  selector:
+    app: hw06-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432

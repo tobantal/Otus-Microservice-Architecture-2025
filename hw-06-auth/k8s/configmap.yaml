@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hw06-auth-config
+  namespace: hw06
+data:
+  DB_HOST: "hw06-postgres"
+  DB_PORT: "5432"
+  DB_NAME: "auth"
