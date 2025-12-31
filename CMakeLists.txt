@@ -22,14 +22,7 @@ FetchContent_Declare(
     GIT_TAG        v0.0.5
 )
 
-# cpp-cache (LRU cache)
-FetchContent_Declare(
-    cpp-cache
-    GIT_REPOSITORY https://github.com/tobantal/cpp-cache.git
-    GIT_TAG        v1.0.4
-)
-
-FetchContent_MakeAvailable(cpp-http-server cpp-cache)
+FetchContent_MakeAvailable(cpp-http-server)
 
 # Найти OpenSSL (ДО FetchContent amqpcpp)
 find_package(OpenSSL REQUIRED)
@@ -85,6 +78,8 @@ add_subdirectory(hw-02-docker)
 add_subdirectory(hw-04-crud)
 
 add_subdirectory(hw-05-monitoring)
+
+add_subdirectory(hw-06-auth)
 
 message(STATUS "")
 message(STATUS "Configuration completed successfully")
