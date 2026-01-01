@@ -81,6 +81,8 @@ add_subdirectory(hw-05-monitoring)
 
 add_subdirectory(hw-06-auth)
 
+add_subdirectory(hw-07-events)
+
 message(STATUS "")
 message(STATUS "Configuration completed successfully")
 message(STATUS "")

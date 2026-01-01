@@ -1,0 +1,249 @@
+{
+  "info": {
+    "name": "HW07 Event-Driven Architecture",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://arch.homework"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create Billing Account",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('userId', 'user-' + Math.random().toString(36).substr(2, 9));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function() {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Account created', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.balance).to.eql(0);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user_id\": \"{{userId}}\"\n}"
+        },
+        "url": "{{baseUrl}}/otusapp/tobolkin/billing/api/v1/billing/accounts"
+      }
+    },
+    {
+      "name": "2. Deposit 1000",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Balance is 1000', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.balance).to.eql(1000);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user_id\": \"{{userId}}\",\n    \"amount\": 1000\n}"
+        },
+        "url": "{{baseUrl}}/otusapp/tobolkin/billing/api/v1/billing/deposit"
+      }
+    },
+    {
+      "name": "3. Create Order (SUCCESS - 500)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function() {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Order status is paid', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.status).to.eql('paid');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user_id\": \"{{userId}}\",\n    \"amount\": 500\n}"
+        },
+        "url": "{{baseUrl}}/otusapp/tobolkin/orders/api/v1/orders"
+      }
+    },
+    {
+      "name": "4. Check Balance (should be 500)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Balance is 500', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.balance).to.eql(500);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/otusapp/tobolkin/billing/api/v1/billing/accounts/{{userId}}"
+      }
+    },
+    {
+      "name": "5. Check Notification (SUCCESS)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Has success notification', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.length).to.be.above(0);",
+              "    pm.expect(json[0].type).to.eql('order.success');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/otusapp/tobolkin/notification/api/v1/notifications?userId={{userId}}"
+      }
+    },
+    {
+      "name": "6. Create Order (FAIL - 600, insufficient funds)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 402 (Payment Required)', function() {",
+              "    pm.response.to.have.status(402);",
+              "});",
+              "",
+              "pm.test('Order status is failed', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.order.status).to.eql('failed');",
+              "});",
+              "",
+              "pm.test('Error is Insufficient funds', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.error).to.include('Insufficient');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"user_id\": \"{{userId}}\",\n    \"amount\": 600\n}"
+        },
+        "url": "{{baseUrl}}/otusapp/tobolkin/orders/api/v1/orders"
+      }
+    },
+    {
+      "name": "7. Check Balance (still 500)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Balance is still 500', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.balance).to.eql(500);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/otusapp/tobolkin/billing/api/v1/billing/accounts/{{userId}}"
+      }
+    },
+    {
+      "name": "8. Check Notification (FAIL)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function() {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Has 2 notifications (success + failed)', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json.length).to.eql(2);",
+              "});",
+              "",
+              "pm.test('Second notification is failed', function() {",
+              "    var json = pm.response.json();",
+              "    pm.expect(json[1].type).to.eql('order.failed');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/otusapp/tobolkin/notification/api/v1/notifications?userId={{userId}}"
+      }
+    }
+  ]
+}
