@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-postgres
+  namespace: hw07
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-postgres
+  template:
+    metadata:
+      labels:
+        app: notification-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "notification"
+        - name: POSTGRES_USER
+          value: "notification"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hw07-db-secret
+              key: NOTIFICATION_DB_PASSWORD
+        volumeMounts:
+        - name: notification-data
+          mountPath: /var/lib/postgresql/data
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "notification"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: notification-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-postgres
+  namespace: hw07
+spec:
+  selector:
+    app: notification-postgres
+  ports:
+  - port: 5432
+    targetPort: 5432

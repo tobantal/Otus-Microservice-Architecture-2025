@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-postgres
+  namespace: hw07
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-postgres
+  template:
+    metadata:
+      labels:
+        app: billing-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "billing"
+        - name: POSTGRES_USER
+          value: "billing"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: hw07-db-secret
+              key: BILLING_DB_PASSWORD
+        volumeMounts:
+        - name: billing-data
+          mountPath: /var/lib/postgresql/data
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "billing"]
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: billing-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-postgres
+  namespace: hw07
+spec:
+  selector:
+    app: billing-postgres
+  ports:
+  - port: 5432
+    targetPort: 5432

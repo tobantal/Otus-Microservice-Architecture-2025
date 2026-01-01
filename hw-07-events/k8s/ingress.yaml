@@ -1,0 +1,39 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hw07-ingress
+  namespace: hw07
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: arch.homework
+    http:
+      paths:
+      # Order Service: /otusapp/tobolkin/orders/...
+      - path: /otusapp/tobolkin/orders(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: order-service
+            port:
+              number: 8000
+      
+      # Billing Service: /otusapp/tobolkin/billing/...
+      - path: /otusapp/tobolkin/billing(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: billing-service
+            port:
+              number: 8001
+      
+      # Notification Service: /otusapp/tobolkin/notification/...
+      - path: /otusapp/tobolkin/notification(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: notification-service
+            port:
+              number: 8002
