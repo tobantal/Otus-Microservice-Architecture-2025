@@ -1,0 +1,1000 @@
+{
+  "info": {
+    "name": "HW08 Choreography Saga Tests",
+    "description": "Тесты для Choreography Saga Pattern с RabbitMQ",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "orderHost", "value": "http://arch.homework/otusapp/tobolkin/orders"},
+    {"key": "billingHost", "value": "http://arch.homework/otusapp/tobolkin/billing"},
+    {"key": "warehouseHost", "value": "http://arch.homework/otusapp/tobolkin/warehouse"},
+    {"key": "deliveryHost", "value": "http://arch.homework/otusapp/tobolkin/delivery"},
+    {"key": "orderId", "value": ""},
+    {"key": "userId", "value": ""},
+    {"key": "productId", "value": ""},
+    {"key": "slotId", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "0. Health Checks",
+      "item": [
+        {
+          "name": "Order Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order service is healthy', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.equal('healthy');",
+                  "    pm.expect(json.service).to.equal('saga-order-service');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/health"
+          }
+        },
+        {
+          "name": "Billing Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Billing service is healthy', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.equal('healthy');",
+                  "    pm.expect(json.service).to.equal('saga-billing-service');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/health"
+          }
+        },
+        {
+          "name": "Warehouse Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Warehouse service is healthy', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.equal('healthy');",
+                  "    pm.expect(json.service).to.equal('saga-warehouse-service');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{warehouseHost}}/health"
+          }
+        },
+        {
+          "name": "Delivery Service Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Delivery service is healthy', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.status).to.equal('healthy');",
+                  "    pm.expect(json.service).to.equal('saga-delivery-service');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{deliveryHost}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Happy Path - Full Saga Success",
+      "item": [
+        {
+          "name": "1.1 Create Billing Account",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var userId = 'user-' + Date.now();",
+                  "pm.collectionVariables.set('userId', userId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Account created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/accounts",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\"}"
+            }
+          }
+        },
+        {
+          "name": "1.2 Deposit Funds (1000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Deposit successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/deposit",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"amount\": 1000}"
+            }
+          }
+        },
+        {
+          "name": "1.3 Check Balance Before Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Balance is 1000', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/api/v1/billing/accounts/{{userId}}"
+          }
+        },
+        {
+          "name": "1.4 Add Product to Warehouse",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var productId = 'prod-' + Date.now();",
+                  "pm.collectionVariables.set('productId', productId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Product created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{warehouseHost}}/api/v1/warehouse/products",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"product_id\": \"{{productId}}\", \"quantity\": 10}"
+            }
+          }
+        },
+        {
+          "name": "1.5 Check Stock Before Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Stock is 10, reserved is 0', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.stock).to.equal(10);",
+                  "    pm.expect(json.reserved).to.equal(0);",
+                  "    pm.expect(json.available).to.equal(10);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{warehouseHost}}/api/v1/warehouse/stock/{{productId}}"
+          }
+        },
+        {
+          "name": "1.6 Add Delivery Slot",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Slot created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('slotId', json.slot_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{deliveryHost}}/api/v1/delivery/slots",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"slot_time\": \"2025-01-15 10:00\"}"
+            }
+          }
+        },
+        {
+          "name": "1.7 Create Order (Starts Saga)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order accepted', function() {",
+                  "    pm.response.to.have.status(202);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.order_id).to.not.be.empty;",
+                  "    pm.expect(json.status).to.equal('BILLING_PENDING');",
+                  "    pm.collectionVariables.set('orderId', json.order_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{orderHost}}/api/v1/orders",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"product_id\": \"{{productId}}\", \"amount\": 500, \"quantity\": 2}"
+            }
+          }
+        },
+        {
+          "name": "1.8 Wait for Saga (2 sec)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "setTimeout(function(){}, 2000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Waited for saga processing', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/health"
+          }
+        },
+        {
+          "name": "1.9 Check Order Status (COMPLETED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saga completed successfully', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.state).to.equal('COMPLETED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "1.10 Verify Balance Charged (500)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Balance decreased by 500', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(500);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/api/v1/billing/accounts/{{userId}}"
+          }
+        },
+        {
+          "name": "1.11 Verify Stock Reserved (2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Stock reserved', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.stock).to.equal(10);",
+                  "    pm.expect(json.reserved).to.equal(2);",
+                  "    pm.expect(json.available).to.equal(8);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{warehouseHost}}/api/v1/warehouse/stock/{{productId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Billing Failed - Insufficient Funds",
+      "item": [
+        {
+          "name": "2.1 Create Account (No Deposit)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var userId = 'poor-user-' + Date.now();",
+                  "pm.collectionVariables.set('userId', userId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Account created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/accounts",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\"}"
+            }
+          }
+        },
+        {
+          "name": "2.2 Create Order (Should Fail)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order accepted for processing', function() {",
+                  "    pm.response.to.have.status(202);",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('orderId', json.order_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{orderHost}}/api/v1/orders",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"product_id\": \"any-product\", \"amount\": 9999, \"quantity\": 1}"
+            }
+          }
+        },
+        {
+          "name": "2.3 Wait for Saga (2 sec)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["setTimeout(function(){}, 2000);"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/health"
+          }
+        },
+        {
+          "name": "2.4 Check Order Status (FAILED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saga failed at billing step', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.state).to.equal('FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "2.5 Verify Balance Unchanged (0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Balance still 0', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(0);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/api/v1/billing/accounts/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Warehouse Failed - Product Not Found",
+      "item": [
+        {
+          "name": "3.1 Create Account with Funds",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var userId = 'warehouse-test-' + Date.now();",
+                  "pm.collectionVariables.set('userId', userId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Account created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/accounts",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\"}"
+            }
+          }
+        },
+        {
+          "name": "3.2 Deposit Funds",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Deposit successful', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/deposit",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"amount\": 1000}"
+            }
+          }
+        },
+        {
+          "name": "3.3 Create Order for Non-Existent Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order accepted', function() {",
+                  "    pm.response.to.have.status(202);",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('orderId', json.order_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{orderHost}}/api/v1/orders",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"product_id\": \"non-existent-product\", \"amount\": 100, \"quantity\": 1}"
+            }
+          }
+        },
+        {
+          "name": "3.4 Wait for Saga (3 sec)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["setTimeout(function(){}, 3000);"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/health"
+          }
+        },
+        {
+          "name": "3.5 Check Order Status (FAILED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saga failed at warehouse step', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.state).to.equal('FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "3.6 Verify Balance Refunded (1000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Balance refunded to 1000', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/api/v1/billing/accounts/{{userId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Delivery Failed - No Slots Available",
+      "item": [
+        {
+          "name": "4.0 Delete All Slots (cleanup)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{deliveryHost}}/api/v1/delivery/slots"
+          }
+        },
+        {
+          "name": "4.1 Create Account with Funds",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var userId = 'delivery-test-' + Date.now();",
+                  "var productId = 'delivery-prod-' + Date.now();",
+                  "pm.collectionVariables.set('userId', userId);",
+                  "pm.collectionVariables.set('productId', productId);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Account created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/accounts",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\"}"
+            }
+          }
+        },
+        {
+          "name": "4.2 Deposit Funds",
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/deposit",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"amount\": 1000}"
+            }
+          }
+        },
+        {
+          "name": "4.3 Add Product (No Delivery Slots!)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Product created', function() {",
+                  "    pm.response.to.have.status(201);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{warehouseHost}}/api/v1/warehouse/products",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"product_id\": \"{{productId}}\", \"quantity\": 10}"
+            }
+          }
+        },
+        {
+          "name": "4.4 Create Order (No Slots Available)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order accepted', function() {",
+                  "    pm.response.to.have.status(202);",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('orderId', json.order_id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{orderHost}}/api/v1/orders",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"user_id\": \"{{userId}}\", \"product_id\": \"{{productId}}\", \"amount\": 200, \"quantity\": 1}"
+            }
+          }
+        },
+        {
+          "name": "4.5 Wait for Saga (3 sec)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["setTimeout(function(){}, 3000);"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/health"
+          }
+        },
+        {
+          "name": "4.6 Check Order Status (FAILED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Saga failed at delivery step', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.state).to.equal('FAILED');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "4.7 Verify Balance Refunded",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Balance refunded to 1000', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(1000);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/api/v1/billing/accounts/{{userId}}"
+          }
+        },
+        {
+          "name": "4.8 Verify Stock Released",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Stock released back', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.reserved).to.equal(0);",
+                  "    pm.expect(json.available).to.equal(10);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{warehouseHost}}/api/v1/warehouse/stock/{{productId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Event Flow Verification",
+      "item": [
+        {
+          "name": "5.1 Setup - Full Test Environment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "var ts = Date.now();",
+                  "pm.collectionVariables.set('userId', 'event-user-' + ts);",
+                  "pm.collectionVariables.set('productId', 'event-prod-' + ts);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/accounts",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"user_id\": \"{{userId}}\"}"}
+          }
+        },
+        {
+          "name": "5.2 Deposit",
+          "request": {
+            "method": "POST",
+            "url": "{{billingHost}}/api/v1/billing/deposit",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"user_id\": \"{{userId}}\", \"amount\": 500}"}
+          }
+        },
+        {
+          "name": "5.3 Add Product",
+          "request": {
+            "method": "POST",
+            "url": "{{warehouseHost}}/api/v1/warehouse/products",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"product_id\": \"{{productId}}\", \"quantity\": 5}"}
+          }
+        },
+        {
+          "name": "5.4 Add Delivery Slot",
+          "request": {
+            "method": "POST",
+            "url": "{{deliveryHost}}/api/v1/delivery/slots",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"slot_time\": \"2025-01-20 14:00\"}"}
+          }
+        },
+        {
+          "name": "5.5 Create Order - Triggers Event Chain",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Order triggers event: order.created', function() {",
+                  "    pm.response.to.have.status(202);",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('orderId', json.order_id);",
+                  "    console.log('Event chain started: order.created');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{orderHost}}/api/v1/orders",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"user_id\": \"{{userId}}\", \"product_id\": \"{{productId}}\", \"amount\": 100, \"quantity\": 1}"}
+          }
+        },
+        {
+          "name": "5.6 Poll Order Status (expect events processed)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["setTimeout(function(){}, 3000);"]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('All events processed: billing.charged → warehouse.reserved → delivery.booked', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.state).to.equal('COMPLETED');",
+                  "    console.log('Event chain completed successfully');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{orderHost}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "5.7 Verify Event: billing.charged",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Event billing.charged processed: balance decreased', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.balance).to.equal(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{billingHost}}/api/v1/billing/accounts/{{userId}}"
+          }
+        },
+        {
+          "name": "5.8 Verify Event: warehouse.reserved",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Event warehouse.reserved processed: stock reserved', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.reserved).to.equal(1);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{warehouseHost}}/api/v1/warehouse/stock/{{productId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

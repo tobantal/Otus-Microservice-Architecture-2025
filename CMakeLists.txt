@@ -83,6 +83,8 @@ add_subdirectory(hw-06-auth)
 
 add_subdirectory(hw-07-events)
 
+add_subdirectory(hw-08-saga)
+
 message(STATUS "")
 message(STATUS "Configuration completed successfully")
 message(STATUS "")
