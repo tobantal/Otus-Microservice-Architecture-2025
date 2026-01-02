@@ -85,6 +85,8 @@ add_subdirectory(hw-07-events)
 
 add_subdirectory(hw-08-saga)
 
+add_subdirectory(hw-09-idempotent)
+
 message(STATUS "")
 message(STATUS "Configuration completed successfully")
 message(STATUS "")
