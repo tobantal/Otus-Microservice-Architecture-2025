@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: idempotent-ingress
+  namespace: hw09
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: arch.homework
+    http:
+      paths:
+      # Order Service
+      - path: /otusapp/tobolkin/orders(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: idempotent-order-service
+            port:
+              number: 8000
+      # Billing Service
+      - path: /otusapp/tobolkin/billing(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: idempotent-billing-service
+            port:
+              number: 8001
+      # Warehouse Service
+      - path: /otusapp/tobolkin/warehouse(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: idempotent-warehouse-service
+            port:
+              number: 8002
+      # Delivery Service
+      - path: /otusapp/tobolkin/delivery(/|$)(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: idempotent-delivery-service
+            port:
+              number: 8003
